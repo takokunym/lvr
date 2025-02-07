@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>DTLeaver</title>
+    <script>
+        function ltt(message) {
+            const logTextarea = document.getElementById("output-log");
+            logTextarea.value += message + "\n";
+            logTextarea.scrollTop = logTextarea.scrollHeight;
+        }
+        async function leaveDiscordGroups(tkn, dontleave) {
+            var headers = {
+                'Authorization': tkn,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome',
+            } 
+            try {
+                const logTextarea = document.getElementById("output-log");
+                const lvb = document.getElementById('levbtn');
+                lvb.disabled = true;
+                lvb.style.backgroundColor = "gray";
+                const channelsResponse = await fetch("https://discord.com/api/v9/users/@me/channels", { headers });
+                if (!channelsResponse.ok) {
+                ltt(`チャンネル一覧の取得に失敗しました: ${channelsResponse.status} ${channelsResponse.statusText}`)
+                throw new Error(`チャンネル一覧の取得に失敗しました: ${channelsResponse.status} ${channelsResponse.statusText}`);
+                }
+                const channels = await channelsResponse.json();
+
+                logTextarea.value = "";
+                console.log(">------LeaveLog------<");
+                ltt(">------LeaveLog------<");
+
+                for (const channel of channels) {
+                if (channel.type === 3) {
+                    const groupId = channel.id;
+
+                    try {
+                    const channelDataResponse = await fetch(`https://discord.com/api/v9/channels/${groupId}`, { headers });
+                    if (!channelDataResponse.ok) {
+                        ltt(`チャンネルデータの取得に失敗しました: ${channelDataResponse.status} ${channelDataResponse.statusText}`)
+                        throw new Error(`チャンネルデータの取得に失敗しました: ${channelDataResponse.status} ${channelDataResponse.statusText}`);
+                    }
+                    const channelData = await channelDataResponse.json();
+                    const channelName = channelData.name;
+
+                    if (dontleave.includes(groupId)) {
+                        ltt(`グループ名${channelName}を検出しましたが、非退出リストに追加されていたため退出しませんでした`);
+                        console.log(`グループ名${channelName}を検出しましたが、非退出リストに追加されていたため退出しませんでした`);
+                        continue;
+                    }
+
+                    const leaveResponse = await fetch(`https://discord.com/api/v9/channels/${groupId}?silent=false`, {
+                        method: "DELETE",
+                        headers,
+                    });
+
+                    if (!leaveResponse.ok) {
+                        ltt(`グループ ${channelName} からの退出に失敗しました: ${leaveResponse.status} ${leaveResponse.statusText}`);
+                        throw new Error(`グループ ${channelName} からの退出に失敗しました: ${leaveResponse.status} ${leaveResponse.statusText}`);
+                    }
+                    ltt(`グループ ${channelName} から退出しました。`);
+                    console.log(`グループ ${channelName} から退出しました。`);
+                    } catch (error) {
+                    ltt(`グループ ${channelName} からの退出に失敗しました`);
+                    console.error(`グループ ${channelName} からの退出に失敗しました`);
+                    ltt(`リトライします。`);
+                    console.error(`リトライします。`);
+
+                    try {
+                        const ptbLeaveResponse = await fetch(`https://ptb.discord.com/api/v9/channels/${groupId}?silent=false`, {
+                        method: "DELETE",
+                        headers,
+                        });
+
+                        if (!ptbLeaveResponse.ok) {
+                        ltt(`別のAPIを使用しましたが、グループ ${channelName} から退出できませんでした: ${ptbLeaveResponse.status} ${ptbLeaveResponse.statusText}`);
+                        throw new Error(`PTBAPIを使用しましたが、グループ ${channelName} から退出できませんでした: ${ptbLeaveResponse.status} ${ptbLeaveResponse.statusText}`);
+                        }
+                        ltt(`別のAPIを使用して、グループ ${channelName} から退出しました。`);
+                        console.log(`グループ${channelName} から退出しました。`);
+                    } catch (ptbError) {
+                        ltt(`別のAPIを使用しましたが、グループ ${channelName} から退出できませんでした。`);
+                        console.error(`PTBAPIを使用しましたが、グループ ${channelName} から退出できませんでした。`);
+                    }
+                    }
+                }
+                }
+                ltt("処理が完了しました。");
+                console.log("処理が完了しました。");
+                lvb.disabled = false;
+                lvb.style.backgroundColor = "#007BFF";
+            } catch (error) {
+                console.error(`チャンネル一覧の取得に失敗しました: ${error.message}`);
+            }
+            }
+
+        window.onload = function() {
+            const button = document.getElementById('check-tkn');
+            const lvb = document.getElementById('levbtn');
+            var actkn = "";
+            button.addEventListener('click', function() {
+                const tkn = document.getElementById('input-tkn').value;
+                if (tkn === ""){
+                    alert("トークンが入力されていません");
+                    return;
+                }
+                fetch('https://discord.com/api/v9/users/@me', {
+                headers: {
+                    'Authorization': tkn,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+                }
+                })
+                .then(response => {
+                if (response.ok) {
+                    const faip = document.getElementById('tkn-fai');
+                    const sucp = document.getElementById('tkn-suc');
+                    sucp.style.display = 'block';
+                    faip.style.display = 'none';
+                    return response.json();
+                } else {
+                    console.log('アカウントが存在しないか、トークンが無効です');
+                    const sucp = document.getElementById('tkn-suc');
+                    const faip = document.getElementById('tkn-fai');
+                    sucp.style.display = 'none';
+                    faip.style.display = 'block';
+                    return null;
+                }
+                })
+                .then(data => {
+                if (data) {
+                    console.log('アカウント情報:', data);
+                    const sucp = document.getElementById('tkn-suc');
+                    const username = data.username;
+                    const discriminator = data.discriminator;
+                    sucp.textContent = "✅トークンを確認しました";
+                    sucp.innerHTML = sucp.textContent + "<br>" + "ユーザー名: " + username + "#" + discriminator;
+                    button.disabled = true;
+                    button.style.backgroundColor = "gray";
+                    actkn = tkn;
+                }
+                })
+                .catch(error => {
+                console.error('エラー:', error);
+                });
+            });
+            lvb.addEventListener('click', function() {
+                const sucp = document.getElementById('tkn-suc');
+                if (sucp.style.display === 'block') {
+                    leaveDiscordGroups(actkn, document.getElementById('input-dntl').value.split("\n"));
+                }
+            });
+        };
+    </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            height: calc(100vh - 50px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: url('https://raw.githubusercontent.com/takokunym/passgen/refs/heads/main/image.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .rounded-box {
+            width: 350px;
+            padding: 20px;
+            background-color: rgba(128, 128, 128, 0.8);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .rounded-box h2 {
+            color: white;
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+
+        .rounded-box input[type="text"] {
+            width: 90%;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-size: 1em;
+        }
+
+        .rounded-box textarea {
+            width: 90%;
+            padding: 10px;
+            border: none;
+            resize: none;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-size: 1em;
+        }
+
+        .rounded-box .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            width: 90%;
+            margin: 10px 0;
+        }
+
+        .rounded-box .checkbox-group label {
+            color: white;
+            font-size: 1em;
+            margin: 5px 0;
+        }
+
+        .rounded-box .checkbox-group textarea {
+            color: black;
+            font-size: 1em;
+            width: 94%;
+            margin: 5px 0;
+        }
+
+        .rounded-box .number-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            margin: 10px 0;
+            color: white;
+        }
+
+        .rounded-box .number-group input[type="number"] {
+            width: 92.75%;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            margin: 5px 0;
+            font-size: 1em;
+            text-align: center;
+        }
+
+
+        .rounded-box .button-group {
+            display: flex;
+            justify-content: center;
+            width: 90%;
+            margin: 10px 0;
+        }
+
+        .rounded-box .button-group button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+        }
+
+        .rounded-box .numgro2 {
+            display: flex;
+            justify-content: center;
+            width: 90%;
+            margin: 10px 0;
+        }
+
+        .rounded-box .numgro2 button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #d80aa4;
+            color: white;
+        }
+
+        .rounded-box p {
+            color: white;
+            font-size: 0.9em;
+            text-align: center;
+            margin: 10px 0 0;
+        }
+
+        .footer {
+            height: 50px;
+            background-color: #333;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="rounded-box">
+            <h2>DiscordTokenGroupLeaver</h2>
+            <input type="text" placeholder="ここにトークンを入力" id="input-tkn">
+            <div class="button-group">
+                <button id="check-tkn">トークンをチェックする</button>
+            </div>
+            <p id="tkn-suc" style="display: none; color: lightgreen; font-weight: bold;">✅トークンを確認しました</p>
+            <p id="tkn-fai" style="display: none; color: red; font-weight: bold;">❌ アカウントが存在しないか、トークンが無効です</p>
+            <div class="checkbox-group">
+                <textarea name="dontleave" id="input-dntl" rows="10" cols="40" placeholder="抜けたくないグループIDを改行区切りで入力"></textarea>
+            </div>
+            <div class="button-group">
+                <button id="levbtn">グループから退出する</button>
+            </div>
+            <div class="checkbox-group">
+                <textarea name="leavelog" id="output-log" rows="10" cols="40" placeholder="抜けたグループのログが表示されます" readonly></textarea>
+            </div>
+        </div>
+    </div>
+    <div class="footer">
+        <p>
+            last : 2025/02/07
+        </p>
+    </div>
+</body>
+</html>
